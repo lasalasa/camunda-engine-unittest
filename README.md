@@ -1,30 +1,14 @@
-# camunda engine unit test template
+# Task assignment
 
-This git repository contains a simple example of how to write a unit test for camunda bpm. You can use it for reporting bugs or asking questions in the forums.
+This repository contains a small example process with 2 user tasks (A and B).
 
-The project contains the following files:
+Both tasks should be executed by the same user group but the user which completed
+task A should not execute task B. For example task B is a review task of task A.
 
-```
-src/
-├── main
-│   ├── java
-│   └── resources
-└── test
-    ├── java
-    │   └── org
-    │       └── camunda
-    │           └── bpm
-    │               └── unittest
-    │                   └── SimpleTestCase.java   (1)
-    └── resources
-        ├── camunda.cfg.xml                       (2)
-        └── testProcess.bpmn                      (3)
-```
-Explanation:
+Therefore a task listener is added to the complete event of task A and calculates
+all users which are allowed to execute task B and saves them in a process variable.
 
-* (1) A java class containing a JUnit Test. It uses the `ProcessEngineRule` for bootstrapping the process engine.
-* (2) Configuration file for the process engine.
-* (3) An example BPMN process.
+This process variable is used to determine the candidate users of task B.
 
 ## Running the test with maven
 
