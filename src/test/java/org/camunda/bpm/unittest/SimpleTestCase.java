@@ -12,17 +12,21 @@
  */
 package org.camunda.bpm.unittest;
 
+import org.camunda.bpm.engine.IdentityService;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
-import org.camunda.bpm.engine.runtime.ProcessInstance;
+import org.camunda.bpm.engine.identity.Group;
+import org.camunda.bpm.engine.identity.User;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.engine.test.Deployment;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
-
-import static org.junit.Assert.*;
-
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.util.List;
+
+import static org.junit.Assert.*;
 
 /**
  * @author Daniel Meyer
@@ -33,25 +37,55 @@ public class SimpleTestCase {
   @Rule
   public ProcessEngineRule rule = new ProcessEngineRule();
 
+  @Before
+  public void createUser() {
+    IdentityService identityService = rule.getIdentityService();
+    Group finance = identityService.newGroup("finance");
+    identityService.saveGroup(finance);
+    User kermit = identityService.newUser("kermit");
+    identityService.saveUser(kermit);
+    User johnny = identityService.newUser("johnny");
+    identityService.saveUser(johnny);
+    User marry = identityService.newUser("marry");
+    identityService.saveUser(marry);
+    identityService.createMembership(kermit.getId(), finance.getId());
+    identityService.createMembership(johnny.getId(), finance.getId());
+    identityService.createMembership(marry.getId(), finance.getId());
+  }
+
   @Test
   @Deployment(resources = {"testProcess.bpmn"})
-  public void shouldExecuteProcess() {
+  public void shouldSetCandidateUsers() {
 
     RuntimeService runtimeService = rule.getRuntimeService();
     TaskService taskService = rule.getTaskService();
 
-    ProcessInstance pi = runtimeService.startProcessInstanceByKey("testProcess");
-    assertFalse("Process instance should not be ended", pi.isEnded());
-    assertEquals(1, runtimeService.createProcessInstanceQuery().count());
+    runtimeService.startProcessInstanceByKey("testProcess");
 
-    Task task = taskService.createTaskQuery().singleResult();
-    assertNotNull("Task should exist", task);
+    // get task A
+    Task taskA = taskService.createTaskQuery().singleResult();
+    assertNotNull(taskA);
 
-    // complete the task
-    taskService.complete(task.getId());
+    // set assignee
+    taskA.setAssignee("johnny");
+    taskService.saveTask(taskA);
 
-    // now the process instance should be ended
-    assertEquals(0, runtimeService.createProcessInstanceQuery().count());
+    // complete task to execute listener
+    taskService.complete(taskA.getId());
+
+    // get task B
+    Task taskB = taskService.createTaskQuery().singleResult();
+    assertNotNull(taskB);
+
+    // get process variable
+    List<String> candidateUserIds = (List<String>) runtimeService.getVariable(taskB.getExecutionId(), "candidateUserIds");
+    assertNotNull(candidateUserIds);
+    assertEquals(2, candidateUserIds.size());
+    assertTrue(candidateUserIds.contains("kermit"));
+    assertFalse(candidateUserIds.contains("johnny"));
+    assertTrue(candidateUserIds.contains("marry"));
+
+    taskService.complete(taskB.getId());
 
   }
 
