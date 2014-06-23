@@ -18,11 +18,11 @@ import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.engine.test.Deployment;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
-
-import static org.junit.Assert.*;
-
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  * @author Daniel Meyer
@@ -33,13 +33,18 @@ public class SimpleTestCase {
   @Rule
   public ProcessEngineRule rule = new ProcessEngineRule();
 
+  public RuntimeService runtimeService;
+  public TaskService taskService;
+
+  @Before
+  public void getServices() {
+    runtimeService = rule.getRuntimeService();
+    taskService = rule.getTaskService();
+  }
+
   @Test
   @Deployment(resources = {"testProcess.bpmn"})
   public void shouldExecuteProcess() {
-
-    RuntimeService runtimeService = rule.getRuntimeService();
-    TaskService taskService = rule.getTaskService();
-
     ProcessInstance pi = runtimeService.startProcessInstanceByKey("testProcess");
     assertFalse("Process instance should not be ended", pi.isEnded());
     assertEquals(1, runtimeService.createProcessInstanceQuery().count());
@@ -51,6 +56,20 @@ public class SimpleTestCase {
     taskService.complete(task.getId());
 
     // now the process instance should be ended
+    assertEquals(0, runtimeService.createProcessInstanceQuery().count());
+
+  }
+
+  @Test
+  @Deployment(resources = {"testProcess.bpmn"})
+  public void shouldHandleError() {
+    ProcessInstance pi = runtimeService.startProcessInstanceByKey("testProcess");
+
+    runtimeService.correlateMessage("message");
+
+    Task task = taskService.createTaskQuery().singleResult();
+    assertNull(task);
+
     assertEquals(0, runtimeService.createProcessInstanceQuery().count());
 
   }
