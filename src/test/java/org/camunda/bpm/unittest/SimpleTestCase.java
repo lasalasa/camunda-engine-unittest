@@ -21,8 +21,12 @@ import org.camunda.bpm.engine.test.ProcessEngineRule;
 
 import static org.junit.Assert.*;
 
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Daniel Meyer
@@ -33,26 +37,38 @@ public class SimpleTestCase {
   @Rule
   public ProcessEngineRule rule = new ProcessEngineRule();
 
+  protected RuntimeService runtimeService;
+
+  @Before
+  public void getServices() {
+    runtimeService = rule.getRuntimeService();
+  }
+
+  @Before
+  public void resetDelegate() {
+    TestDelegate.executed = false;
+  }
+
   @Test
   @Deployment(resources = {"testProcess.bpmn"})
-  public void shouldExecuteProcess() {
+  public void shouldExecuteDelegate() {
+    Map<String, Object> variables = new HashMap<String, Object>();
+    variables.put("skip", false);
 
-    RuntimeService runtimeService = rule.getRuntimeService();
-    TaskService taskService = rule.getTaskService();
+    runtimeService.startProcessInstanceByKey("testProcess", variables);
 
-    ProcessInstance pi = runtimeService.startProcessInstanceByKey("testProcess");
-    assertFalse("Process instance should not be ended", pi.isEnded());
-    assertEquals(1, runtimeService.createProcessInstanceQuery().count());
+    assertTrue(TestDelegate.executed);
+  }
 
-    Task task = taskService.createTaskQuery().singleResult();
-    assertNotNull("Task should exist", task);
+  @Test
+  @Deployment(resources = {"testProcess.bpmn"})
+  public void shouldNotExecuteDelegate() {
+    Map<String, Object> variables = new HashMap<String, Object>();
+    variables.put("skip", true);
 
-    // complete the task
-    taskService.complete(task.getId());
+    runtimeService.startProcessInstanceByKey("testProcess", variables);
 
-    // now the process instance should be ended
-    assertEquals(0, runtimeService.createProcessInstanceQuery().count());
-
+    assertFalse(TestDelegate.executed);
   }
 
 }
