@@ -1,40 +1,9 @@
-# camunda engine unit test template
+# Scripting everywhere in camunda BPM
 
-This git repository contains a simple example of how to write a unit test for camunda bpm. You can use it for reporting bugs or asking questions in the forums.
+This git repository contains a simple example the new scripting features of the
+[camunda BPM 7.2.0-alpha3][alpha3] release. Please see the [blog post][] for more informations.
 
-The project contains the following files:
+![Example process](src/test/resources/scriptingEverywhere.png)
 
-```
-src/
-├── main
-│   ├── java
-│   └── resources
-└── test
-    ├── java
-    │   └── org
-    │       └── camunda
-    │           └── bpm
-    │               └── unittest
-    │                   └── SimpleTestCase.java   (1)
-    └── resources
-        ├── camunda.cfg.xml                       (2)
-        └── testProcess.bpmn                      (3)
-```
-Explanation:
-
-* (1) A java class containing a JUnit Test. It uses the `ProcessEngineRule` for bootstrapping the process engine.
-* (2) Configuration file for the process engine.
-* (3) An example BPMN process.
-
-## Running the test with maven
-
-In order to run the testsuite with maven you can say:
-
-```
-mvn clean test
-```
-
-## Importing the project into eclipse.
-
-If you use eclipse you can simply import the project by selecting `File / Import |-> Existing Maven Projects.
-
+[alpha3]: http://blog.camunda.org/2014/07/camunda-bpm-720-alpha3-released.html
+[blog post]: http://blog.camunda.org/2014/07/scripting-everywhere-in-camunda-bpm.html

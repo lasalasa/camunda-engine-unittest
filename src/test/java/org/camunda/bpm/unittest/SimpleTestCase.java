@@ -14,15 +14,13 @@ package org.camunda.bpm.unittest;
 
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
-import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.engine.test.Deployment;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
-
-import static org.junit.Assert.*;
-
 import org.junit.Rule;
 import org.junit.Test;
+
+import static org.junit.Assert.assertNotNull;
 
 /**
  * @author Daniel Meyer
@@ -34,25 +32,16 @@ public class SimpleTestCase {
   public ProcessEngineRule rule = new ProcessEngineRule();
 
   @Test
-  @Deployment(resources = {"testProcess.bpmn"})
+  @Deployment(resources = {"scriptingEverywhere.bpmn"})
   public void shouldExecuteProcess() {
 
     RuntimeService runtimeService = rule.getRuntimeService();
     TaskService taskService = rule.getTaskService();
 
-    ProcessInstance pi = runtimeService.startProcessInstanceByKey("testProcess");
-    assertFalse("Process instance should not be ended", pi.isEnded());
-    assertEquals(1, runtimeService.createProcessInstanceQuery().count());
+    runtimeService.startProcessInstanceByKey("scriptingEverywhere");
 
     Task task = taskService.createTaskQuery().singleResult();
-    assertNotNull("Task should exist", task);
-
-    // complete the task
-    taskService.complete(task.getId());
-
-    // now the process instance should be ended
-    assertEquals(0, runtimeService.createProcessInstanceQuery().count());
-
+    assertNotNull(task);
   }
 
 }
