@@ -12,17 +12,18 @@
  */
 package org.camunda.bpm.unittest;
 
-import org.camunda.bpm.engine.RuntimeService;
-import org.camunda.bpm.engine.TaskService;
-import org.camunda.bpm.engine.runtime.ProcessInstance;
-import org.camunda.bpm.engine.task.Task;
+import java.util.List;
+import org.camunda.bpm.engine.FormService;
+import org.camunda.bpm.engine.RepositoryService;
+import org.camunda.bpm.engine.form.FormField;
+import org.camunda.bpm.engine.form.StartFormData;
+import org.camunda.bpm.engine.repository.ProcessDefinition;
 import org.camunda.bpm.engine.test.Deployment;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
-
-import static org.junit.Assert.*;
-
 import org.junit.Rule;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author Daniel Meyer
@@ -37,22 +38,25 @@ public class SimpleTestCase {
   @Deployment(resources = {"testProcess.bpmn"})
   public void shouldExecuteProcess() {
 
-    RuntimeService runtimeService = rule.getRuntimeService();
-    TaskService taskService = rule.getTaskService();
+    RepositoryService repositoryService = rule.getRepositoryService();
+    FormService formService = rule.getFormService();
 
-    ProcessInstance pi = runtimeService.startProcessInstanceByKey("testProcess");
-    assertFalse("Process instance should not be ended", pi.isEnded());
-    assertEquals(1, runtimeService.createProcessInstanceQuery().count());
+    ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().processDefinitionKey("testProcess").singleResult();
 
-    Task task = taskService.createTaskQuery().singleResult();
-    assertNotNull("Task should exist", task);
+    StartFormData startFormData = formService.getStartFormData(processDefinition.getId());
 
-    // complete the task
-    taskService.complete(task.getId());
+    List<FormField> formFields = startFormData.getFormFields();
 
-    // now the process instance should be ended
-    assertEquals(0, runtimeService.createProcessInstanceQuery().count());
+    assertEquals(2, formFields.size());
 
+    FormField field = formFields.get(0);
+    assertEquals("name", field.getId());
+    assertEquals("Name", field.getLabel());
+
+    field = formFields.get(1);
+    assertEquals("age", field.getId());
+    assertEquals("Age", field.getLabel());
+    assertEquals("30", field.getDefaultValue());
   }
 
 }
