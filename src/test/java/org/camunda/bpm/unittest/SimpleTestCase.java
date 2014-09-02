@@ -12,17 +12,17 @@
  */
 package org.camunda.bpm.unittest;
 
+import org.camunda.bpm.engine.ManagementService;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
-import org.camunda.bpm.engine.runtime.ProcessInstance;
+import org.camunda.bpm.engine.runtime.Job;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.engine.test.Deployment;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
-
-import static org.junit.Assert.*;
-
 import org.junit.Rule;
 import org.junit.Test;
+
+import static org.junit.Assert.assertNotNull;
 
 /**
  * @author Daniel Meyer
@@ -35,23 +35,25 @@ public class SimpleTestCase {
 
   @Test
   @Deployment(resources = {"testProcess.bpmn"})
-  public void shouldExecuteProcess() {
+  public void shouldExecuteProcess() throws InterruptedException {
 
     RuntimeService runtimeService = rule.getRuntimeService();
     TaskService taskService = rule.getTaskService();
+    ManagementService managementService = rule.getManagementService();
 
-    ProcessInstance pi = runtimeService.startProcessInstanceByKey("testProcess");
-    assertFalse("Process instance should not be ended", pi.isEnded());
-    assertEquals(1, runtimeService.createProcessInstanceQuery().count());
+    runtimeService.startProcessInstanceByKey("testProcess");
 
-    Task task = taskService.createTaskQuery().singleResult();
-    assertNotNull("Task should exist", task);
+    // execute boundary event job
+    Job job = managementService.createJobQuery().singleResult();
+    assertNotNull(job);
+    managementService.executeJob(job.getId());
 
-    // complete the task
-    taskService.complete(task.getId());
+    // assert service task execution listener was executed
+    assertNotNull(ReminderTask.taskToReview);
 
-    // now the process instance should be ended
-    assertEquals(0, runtimeService.createProcessInstanceQuery().count());
+    // assert user task still exists
+    Task task = taskService.createTaskQuery().active().singleResult();
+    assertNotNull(task);
 
   }
 
