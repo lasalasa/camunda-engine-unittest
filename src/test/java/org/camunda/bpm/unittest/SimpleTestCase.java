@@ -20,8 +20,13 @@ import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.instance.Definitions;
+import org.camunda.bpm.model.bpmn.instance.EndEvent;
+import org.camunda.bpm.model.bpmn.instance.Lane;
+import org.camunda.bpm.model.bpmn.instance.LaneSet;
+import org.camunda.bpm.model.bpmn.instance.Process;
 import org.camunda.bpm.model.bpmn.instance.StartEvent;
-import org.camunda.bpm.model.xml.instance.ModelElementInstance;
+import org.camunda.bpm.model.bpmn.instance.Task;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -34,19 +39,68 @@ public class SimpleTestCase {
   @Rule
   public ProcessEngineRule rule = new ProcessEngineRule();
 
-  protected BpmnModelInstance createProcess(String id, String name) {
-    BpmnModelInstance modelInstance = Bpmn.createProcess("testProcess").done();
-    ModelElementInstance process = modelInstance.getModelElementById("testProcess");
+  protected BpmnModelInstance buildModel() {
+    // Create Model
+    BpmnModelInstance modelInstance = Bpmn.createEmptyModel();
+    Definitions definitions = modelInstance.newInstance(Definitions.class);
+    definitions.setId("definition");
+    definitions.setTargetNamespace("http://camunda.com");
+    modelInstance.setDefinitions(definitions);
+
+    // Create Process
+    Process process = modelInstance.newInstance(Process.class);
+    process.setName("Process Name");
+    process.setId("id12345");
+    process.setExecutable(true);
+    definitions.addChildElement(process);
+
+
+    // Create laneset ( to hold lane )
+    LaneSet laneset = modelInstance.newInstance(LaneSet.class);
+
+    // Create lane
+    Lane lane = modelInstance.newInstance(Lane.class);
+    lane.setName("Swimlane Name");
+
+    // Create start event
     StartEvent startEvent = modelInstance.newInstance(StartEvent.class);
-    startEvent.setId(id);
-    startEvent.setName(name);
+    startEvent.setName("Start Event");
+    startEvent.setId("id23456");
+    startEvent.setCamundaAsync(true);
     process.addChildElement(startEvent);
+
+    // Add reference to lane
+    lane.getFlowNodeRefs().add(startEvent);
+
+    // Create empty task
+    Task task = modelInstance.newInstance(Task.class);
+    task.setName("Task");
+    task.setId("id34567");
+    process.addChildElement(task);
+
+    // Add reference to lane
+    lane.getFlowNodeRefs().add(task);
+
+    // Create end event
+    EndEvent endEvent = modelInstance.newInstance(EndEvent.class);
+    endEvent.setName("End Event");
+    endEvent.setId("id45678");
+    process.addChildElement(endEvent);
+
+    // Add reference to lane
+    lane.getFlowNodeRefs().add(endEvent);
+
+    // Add lane to laneset
+    laneset.addChildElement(lane);
+    // Add laneset to process
+    process.addChildElement(laneset);
+
     return modelInstance;
   }
 
   @Test
   public void shouldExecuteProcess() {
-    BpmnModelInstance modelInstance = createProcess("aNormalId", "A Name with whitespaces and even line breaks\n!");
+    BpmnModelInstance modelInstance = buildModel();
     Bpmn.validateModel(modelInstance);
     System.out.println(Bpmn.convertToString(modelInstance));
 
@@ -54,10 +108,10 @@ public class SimpleTestCase {
     repositoryService.createDeployment().addModelInstance("testProcess.bpmn", modelInstance).deploy();
 
     RuntimeService runtimeService = rule.getProcessEngine().getRuntimeService();
-    runtimeService.startProcessInstanceByKey("testProcess");
+    runtimeService.startProcessInstanceByKey("id12345");
 
     HistoryService historyService = rule.getProcessEngine().getHistoryService();
-    assertEquals(1, historyService.createHistoricProcessInstanceQuery().processDefinitionKey("testProcess").count());
+    assertEquals(1, historyService.createHistoricProcessInstanceQuery().processDefinitionKey("id12345").count());
   }
 
 }
