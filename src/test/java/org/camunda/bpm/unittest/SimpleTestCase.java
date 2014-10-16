@@ -12,15 +12,16 @@
  */
 package org.camunda.bpm.unittest;
 
+import static org.junit.Assert.assertEquals;
+
+import org.camunda.bpm.engine.HistoryService;
+import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.RuntimeService;
-import org.camunda.bpm.engine.TaskService;
-import org.camunda.bpm.engine.runtime.ProcessInstance;
-import org.camunda.bpm.engine.task.Task;
-import org.camunda.bpm.engine.test.Deployment;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
-
-import static org.junit.Assert.*;
-
+import org.camunda.bpm.model.bpmn.Bpmn;
+import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.instance.StartEvent;
+import org.camunda.bpm.model.xml.instance.ModelElementInstance;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -33,26 +34,30 @@ public class SimpleTestCase {
   @Rule
   public ProcessEngineRule rule = new ProcessEngineRule();
 
+  protected BpmnModelInstance createProcess(String id, String name) {
+    BpmnModelInstance modelInstance = Bpmn.createProcess("testProcess").done();
+    ModelElementInstance process = modelInstance.getModelElementById("testProcess");
+    StartEvent startEvent = modelInstance.newInstance(StartEvent.class);
+    startEvent.setId(id);
+    startEvent.setName(name);
+    process.addChildElement(startEvent);
+    return modelInstance;
+  }
+
   @Test
-  @Deployment(resources = {"testProcess.bpmn"})
   public void shouldExecuteProcess() {
+    BpmnModelInstance modelInstance = createProcess("aNormalId", "A Name with whitespaces and even line breaks\n!");
+    Bpmn.validateModel(modelInstance);
+    System.out.println(Bpmn.convertToString(modelInstance));
 
-    RuntimeService runtimeService = rule.getRuntimeService();
-    TaskService taskService = rule.getTaskService();
+    RepositoryService repositoryService = rule.getProcessEngine().getRepositoryService();
+    repositoryService.createDeployment().addModelInstance("testProcess.bpmn", modelInstance).deploy();
 
-    ProcessInstance pi = runtimeService.startProcessInstanceByKey("testProcess");
-    assertFalse("Process instance should not be ended", pi.isEnded());
-    assertEquals(1, runtimeService.createProcessInstanceQuery().count());
+    RuntimeService runtimeService = rule.getProcessEngine().getRuntimeService();
+    runtimeService.startProcessInstanceByKey("testProcess");
 
-    Task task = taskService.createTaskQuery().singleResult();
-    assertNotNull("Task should exist", task);
-
-    // complete the task
-    taskService.complete(task.getId());
-
-    // now the process instance should be ended
-    assertEquals(0, runtimeService.createProcessInstanceQuery().count());
-
+    HistoryService historyService = rule.getProcessEngine().getHistoryService();
+    assertEquals(1, historyService.createHistoricProcessInstanceQuery().processDefinitionKey("testProcess").count());
   }
 
 }
