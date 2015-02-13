@@ -16,6 +16,9 @@ import static org.camunda.bpm.engine.test.assertions.ProcessEngineTests.assertTh
 import static org.camunda.bpm.engine.test.assertions.ProcessEngineTests.runtimeService;
 import static org.camunda.bpm.engine.test.assertions.ProcessEngineTests.task;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.test.Deployment;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
@@ -34,8 +37,11 @@ public class SimpleTestCase {
   @Test
   @Deployment(resources = {"process1.bpmn", "process2.bpmn", "process3.bpmn"})
   public void shouldExecuteProcess() {
+    Map<String, Object> variables = new HashMap<String, Object>();
+    variables.put("error", false);
+
     // Given we create a new process instance
-    ProcessInstance processInstance = runtimeService().startProcessInstanceByKey("Process_1");
+    ProcessInstance processInstance = runtimeService().startProcessInstanceByKey("Process_1", variables);
 
     // And there should exist just a single task within that process instance
     assertThat(task(processInstance)).isNotNull();
@@ -47,4 +53,22 @@ public class SimpleTestCase {
       .containsEntry("b", "");
   }
 
+  @Test
+  @Deployment(resources = {"process1.bpmn", "process2.bpmn", "process3.bpmn"})
+  public void shouldThrowError() {
+    Map<String, Object> variables = new HashMap<String, Object>();
+    variables.put("error", true);
+
+    // Given we create a new process instance
+    ProcessInstance processInstance = runtimeService().startProcessInstanceByKey("Process_1", variables);
+
+    // And there should exist just a single task within that process instance
+    assertThat(task(processInstance)).isNotNull();
+
+    // And the process variables exist
+    assertThat(processInstance).variables()
+      .containsEntry("hello", "world")
+      .containsEntry("a", "?")
+      .containsEntry("b", "");
+  }
 }
