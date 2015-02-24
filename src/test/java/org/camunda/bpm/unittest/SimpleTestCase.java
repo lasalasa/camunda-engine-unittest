@@ -12,12 +12,20 @@
  */
 package org.camunda.bpm.unittest;
 
-import org.camunda.bpm.engine.runtime.ProcessInstance;
-import org.camunda.bpm.engine.test.Deployment;
+import static org.camunda.bpm.engine.test.assertions.ProcessEngineTests.assertThat;
+import static org.camunda.bpm.engine.test.assertions.ProcessEngineTests.taskService;
+
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+
+import org.apache.ibatis.logging.LogFactory;
+import org.camunda.bpm.engine.impl.util.ClockUtil;
+import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
-
-import static org.camunda.bpm.engine.test.assertions.ProcessEngineTests.*;
-
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -30,22 +38,67 @@ public class SimpleTestCase {
   @Rule
   public ProcessEngineRule rule = new ProcessEngineRule();
 
-  @Test
-  @Deployment(resources = {"testProcess.bpmn"})
-  public void shouldExecuteProcess() {
-    // Given we create a new process instance
-    ProcessInstance processInstance = runtimeService().startProcessInstanceByKey("testProcess");
-    // Then it should be active
-    assertThat(processInstance).isActive();
-    // And it should be the only instance
-    assertThat(processInstanceQuery().count()).isEqualTo(1);
-    // And there should exist just a single task within that process instance
-    assertThat(task(processInstance)).isNotNull();
+  public String[] taskNames;
+  public Date[] createDates;
 
-    // When we complete that task
-    complete(task(processInstance));
-    // Then the process instance should be ended
-    assertThat(processInstance).isEnded();
+  @BeforeClass
+  public static void enableLogging() {
+    LogFactory.useStdOutLogging();
+  }
+
+  @Before
+  public void createTasks() {
+    taskNames = new String[] { "Z", "C", "A", "B" };
+    createDates = new Date[] {
+      new Date(1424497434),
+      new Date(1423597434),
+      new Date(1424790034),
+      new Date(1414787434)
+    };
+
+    for (int i = 0; i < taskNames.length; i++) {
+      ClockUtil.setCurrentTime(createDates[i]);
+      Task task = taskService().newTask();
+      task.setName(taskNames[i]);
+      taskService().saveTask(task);
+    }
+
+    Arrays.sort(taskNames);
+    Arrays.sort(createDates);
+  }
+
+  @Test
+  public void shouldOrderTasksByName() {
+    List<Task> tasks = taskService().createTaskQuery().orderByTaskName().asc().list();
+    for (int i = 0; i < taskNames.length; i++) {
+      assertThat(taskNames[i]).isEqualTo(tasks.get(i).getName());
+    }
+
+    tasks = taskService().createTaskQuery().orderByTaskName().desc().list();
+    for (int i = 0; i < taskNames.length; i++) {
+      assertThat(taskNames[taskNames.length - 1 - i]).isEqualTo(tasks.get(i).getName());
+    }
+  }
+
+  @Test
+  public void shouldOrderTasksByCreateTime() {
+    List<Task> tasks = taskService().createTaskQuery().orderByTaskCreateTime().asc().list();
+    for (int i = 0; i < createDates.length; i++) {
+      assertThat(createDates[i]).isEqualTo(tasks.get(i).getCreateTime());
+    }
+
+    tasks = taskService().createTaskQuery().orderByTaskCreateTime().desc().list();
+    for (int i = 0; i < createDates.length; i++) {
+      assertThat(createDates[createDates.length - 1 - i]).isEqualTo(tasks.get(i).getCreateTime());
+    }
+  }
+
+  @After
+  public void deleteTasks() {
+    for (Task task : taskService().createTaskQuery().list()) {
+      taskService().deleteTask(task.getId());
+    }
+
   }
 
 }

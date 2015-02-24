@@ -99,10 +99,9 @@
 
     <!-- database -->
     <dependency>
-      <groupId>com.h2database</groupId>
-      <artifactId>h2</artifactId>
-      <scope>provided</scope>
-      <version>${version.h2}</version>
+      <groupId>com.ibm.db2.jcc</groupId>
+      <artifactId>db2jcc4</artifactId>
+      <version>9.7</version>
     </dependency>
 
   </dependencies>
