@@ -25,6 +25,12 @@
       </list>
     </property>
 
+    <property name="customPreDeployers">
+      <list>
+        <bean class="org.camunda.bpm.unittest.PreDeployer" />
+      </list>
+    </property>
+
     <property name="failedJobCommandFactory" ref="foxFailedJobCommandFactory" />
 
     <!--<property name="idGenerator" ref="uuidGenerator" />-->
