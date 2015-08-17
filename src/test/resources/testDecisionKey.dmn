@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Definitions xmlns="http://www.omg.org/spec/DMN/20130901"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="definitions"
+             namespace="Examples">
+  <Decision id="testDecision">
+    <DecisionTable id="decisionTable" isComplete="true" isConsistent="true">
+      <clause id="clause1" name="Input">
+        <inputExpression id="inputExpression1" name="Input">
+          <text>task['foo']</text>
+        </inputExpression>
+        <inputEntry id="inputEntry1">
+          <text>#{task['foo'] == 'a'}</text>
+        </inputEntry>
+        <inputEntry id="inputEntry2">
+          <text>#{task['foo'] == 'b'}</text>
+        </inputEntry>
+      </clause>
+      <clause id="clause2" name="Output" camunda:output="result">
+        <outputEntry id="outputEntry1">
+          <text>a</text>
+        </outputEntry>
+        <outputEntry id="outputEntry2">
+          <text>b</text>
+        </outputEntry>
+      </clause>
+      <rule id="rule1">
+        <condition>inputEntry1</condition>
+        <conclusion>outputEntry1</conclusion>
+      </rule>
+      <rule id="rule2">
+        <condition>inputEntry2</condition>
+        <conclusion>outputEntry2</conclusion>
+      </rule>
+    </DecisionTable>
+  </Decision>
+</Definitions>
