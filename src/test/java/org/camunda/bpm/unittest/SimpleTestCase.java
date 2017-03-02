@@ -18,6 +18,8 @@ import org.camunda.bpm.engine.test.ProcessEngineRule;
 
 import static org.camunda.bpm.engine.test.assertions.ProcessEngineTests.*;
 
+import org.camunda.bpm.engine.variable.VariableMap;
+import org.camunda.bpm.engine.variable.Variables;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -31,21 +33,54 @@ public class SimpleTestCase {
   public ProcessEngineRule rule = new ProcessEngineRule();
 
   @Test
-  @Deployment(resources = {"testProcess.bpmn"})
-  public void shouldExecuteProcess() {
-    // Given we create a new process instance
-    ProcessInstance processInstance = runtimeService().startProcessInstanceByKey("testProcess");
-    // Then it should be active
-    assertThat(processInstance).isActive();
-    // And it should be the only instance
-    assertThat(processInstanceQuery().count()).isEqualTo(1);
-    // And there should exist just a single task within that process instance
-    assertThat(task(processInstance)).isNotNull();
+  @Deployment(resources = {"send_message.bpmn", "receive_message.bpmn"})
+  public void shouldCorrelateMessage() {
+    // given
+    VariableMap variables = Variables.putValue("MSISDN1", "1234");
+    ProcessInstance receiveMessage1 = runtimeService().startProcessInstanceByKey("receiveMessage", variables);
+    ProcessInstance receiveMessage2 = runtimeService().startProcessInstanceByKey("receiveMessage", variables);
+    ProcessInstance receiveMessage3 = runtimeService().startProcessInstanceByKey("receiveMessage", variables);
 
-    // When we complete that task
-    complete(task(processInstance));
-    // Then the process instance should be ended
-    assertThat(processInstance).isEnded();
+    // when
+    runtimeService().deleteProcessInstance(receiveMessage1.getProcessInstanceId(), "test");
+    runtimeService().deleteProcessInstance(receiveMessage2.getProcessInstanceId(), "test");
+
+    // then
+    assertThat(receiveMessage1).isEnded();
+    assertThat(receiveMessage2).isEnded();
+
+    // when
+    ProcessInstance sendMessage = runtimeService().startProcessInstanceByKey("sendMessage", variables);
+
+    // then
+    assertThat(sendMessage).isEnded();
+    assertThat(receiveMessage3).isEnded();
+  }
+
+  @Test
+  @Deployment(resources = {"send_message.bpmn", "receive_message.bpmn"})
+  public void shouldCorrelateMessageWithBusinessKey() {
+    // given
+    VariableMap variables = Variables.putValue("MSISDN1", "1234");
+    ProcessInstance receiveMessage1 = runtimeService().startProcessInstanceByKey("receiveMessage", "receive1", variables);
+    ProcessInstance receiveMessage2 = runtimeService().startProcessInstanceByKey("receiveMessage", "receive2", variables);
+    ProcessInstance receiveMessage3 = runtimeService().startProcessInstanceByKey("receiveMessage", "receive3", variables);
+
+    // when
+    runtimeService().deleteProcessInstance(receiveMessage1.getProcessInstanceId(), "test");
+    runtimeService().deleteProcessInstance(receiveMessage2.getProcessInstanceId(), "test");
+
+    // then
+    assertThat(receiveMessage1).isEnded();
+    assertThat(receiveMessage2).isEnded();
+
+    // when
+    variables.putValue("businessKey", "receive3");
+    ProcessInstance sendMessage = runtimeService().startProcessInstanceByKey("sendMessage", variables);
+
+    // then
+    assertThat(sendMessage).isEnded();
+    assertThat(receiveMessage3).isEnded();
   }
 
 }
